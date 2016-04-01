@@ -42,6 +42,13 @@ def cmp_by_sell_date(lot_a, lot_b):
     return 1
   return 0
 
+def cmp_by_original_form_position(lot_a, lot_b):
+  if lot_a.original_form_position != lot_b.original_form_position:
+    if lot_a.original_form_position < lot_b.original_form_position:
+      return -1
+    return 1
+  return cmp_by_buy_date(lot_a, lot_b)
+
 def buy_lots_match(lot_a, lot_b):
   a_buys = lot_a.buy_lot.split(',')
   b_buys = lot_b.buy_lot.split(',')
@@ -49,6 +56,10 @@ def buy_lots_match(lot_a, lot_b):
 
 def merge_buy_lots(merge_from, merge_to):
   # Move all buy lots from 'from' into 'to'. Assume there is no intersection
+  if buy_lots_match(merge_from, merge_to):
+      # FAIL: from:   8 GOOG () acq: 2015-06-24  4329.37 sell: 2015-06-26  4276.07 L.2 10 [IsRepl]
+      #         to:   8 GOOG () acq: 2015-06-24  4329.37 sell: 2015-06-26  4276.07 L.2 10 [IsRepl]
+      print "FAIL: from: ", merge_from, " to: ", merge_to
   assert(not buy_lots_match(merge_from, merge_to))
   merge_to.buy_lot += ',' + merge_from.buy_lot
 
@@ -98,11 +109,15 @@ def split_head_lot(lots, ideal_head_count):
   lots[0].count = lots[0].count - ideal_head_count
   # adjust prices
   total_cnt = new_lot.count + lots[0].count
-  new_lot.basis = new_lot.basis * new_lot.count / total_cnt
-  lots[0].basis = lots[0].basis * lots[0].count / total_cnt
+  basis = new_lot.basis #  == lots[0].proceeds)
+  proceeds = new_lot.proceeds # == lots[0].basis
+
+  new_lot.basis = basis * new_lot.count / total_cnt
+  lots[0].basis = basis * lots[0].count / total_cnt
   if new_lot.has_sell():
-    new_lot.proceeds = new_lot.proceeds * new_lot.count / total_cnt
-    lots[0].proceeds = lots[0].proceeds * lots[0].count / total_cnt
+    new_lot.proceeds = proceeds * new_lot.count / total_cnt
+    lots[0].proceeds = proceeds * lots[0].count / total_cnt
+
   lots[0].form_position += '.2'
   new_lot.form_position += '.1'
   lots.insert(0, new_lot)
@@ -162,18 +177,51 @@ def main():
   parser.add_argument('-o', '--out_file')
   parser.add_argument('-w', '--do_wash', metavar='in_file')
   parser.add_argument('-q', '--quiet', action="store_true")
+  parser.add_argument('-m', '--merge_split_lots', action="store_true",
+                      help='''Any split lots are merged back together at end.
+                      This makes it easier to match the output to the input
+                      lots, but can cause the buy-dates to be slightly
+                      incorrect since a lot can only have a single buy date.
+                      In this mode, some wash sale lots may have a loss that
+                      is greater than the adjustment amount, instead of being
+                      identical, i.e., only part of the loss in the lot is
+                      actually a wash sale. This is expected in this mode..''')
+  parser.add_argument('-r', '--adjust_for_dollar_rounding', action="store_true",
+                      help='''Some tax software packages will round the basis,
+                      proceeds and adjustment to calculate the total loss (or
+                      profit). This can cause problems for wash sales which
+                      instead of having a loss of $0 may now have a profit of
+                      $1, which results in a warning about a wash sale lot with
+                      a profit. Fix this by slightly modifying the adjustment
+                      amount so that the final loss will be $0 in such cases.
+                      It is safe to use this option with the merge_split_lots
+                      option.''')
   parsed = parser.parse_args()
 
   if parsed.do_wash:
     lots = lot.load_lots(parsed.do_wash)
-    lot.print_lots(lots)
+    lot.print_lots(lots, False)
     if parsed.quiet:
       logger = progress_logger.NullLogger()
     else:
       logger = progress_logger.TermLogger()
     out = perform_wash(lots, logger)
+
+    # merge split lots back together, if asked.
+    if parsed.merge_split_lots:
+      out.sort(cmp=cmp_by_original_form_position)
+      out = lot.merge_split_lots(out)
+
+    # make the adjustment safe for whole-dollar rounding arithmentic
+    if parsed.adjust_for_dollar_rounding:
+      lot.adjust_for_dollar_rounding(out)
+
+    # readable text output
     print 'output:'
-    lot.print_lots(out)
+    lot.print_lots(out, merged=parsed.merge_split_lots,
+                   rounded_dollars=parsed.adjust_for_dollar_rounding)
+
+    # CSV text output
     if parsed.out_file:
       print 'Saving final lots to', parsed.out_file
       lot.save_lots(out, parsed.out_file)

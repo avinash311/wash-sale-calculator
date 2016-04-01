@@ -1,4 +1,4 @@
-Cnt,Sym,Desc,BuyDate,Basis,SellDate,Proceeds,AdjCode,Adj,FormPosition,BuyLot,IsReplacement
+Count, Symbol, Description, Date Acquired, Cost Basis, Date Sold, Proceeds, AdjCode, Adjustment Amount, FormPosition, BuyLot, IsReplacement
 50,M,123ABC,09/26/2013,2500.0,02/06/2014,2000.0,W,500.0,Line 1.1,1,
 50,M,123ABC,09/26/2013,2500.0,02/06/2014,2000.0,W,500.0,Line 1.2,1,
 50,M,123ABC,10/01/2013,1500.0,,,,,Buy A,"2,1",True
