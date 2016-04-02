@@ -42,13 +42,6 @@ def cmp_by_sell_date(lot_a, lot_b):
     return 1
   return 0
 
-def cmp_by_original_form_position(lot_a, lot_b):
-  if lot_a.original_form_position != lot_b.original_form_position:
-    if lot_a.original_form_position < lot_b.original_form_position:
-      return -1
-    return 1
-  return cmp_by_buy_date(lot_a, lot_b)
-
 def buy_lots_match(lot_a, lot_b):
   a_buys = lot_a.buy_lot.split(',')
   b_buys = lot_b.buy_lot.split(',')
@@ -199,7 +192,7 @@ def main():
   parsed = parser.parse_args()
 
   if parsed.do_wash:
-    lots = lot.load_lots(parsed.do_wash)
+    lots = lot.load_lots(open(parsed.do_wash))
     lot.print_lots(lots, False)
     if parsed.quiet:
       logger = progress_logger.NullLogger()
@@ -209,7 +202,6 @@ def main():
 
     # merge split lots back together, if asked.
     if parsed.merge_split_lots:
-      out.sort(cmp=cmp_by_original_form_position)
       out = lot.merge_split_lots(out)
 
     # make the adjustment safe for whole-dollar rounding arithmentic
@@ -224,7 +216,7 @@ def main():
     # CSV text output
     if parsed.out_file:
       print 'Saving final lots to', parsed.out_file
-      lot.save_lots(out, parsed.out_file)
+      lot.save_lots(out, open(parsed.out_file, 'w'))
 
 if __name__ == "__main__":
   main()

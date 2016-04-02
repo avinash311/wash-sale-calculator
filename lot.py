@@ -114,16 +114,16 @@ class Lot(object):
     return front + sell + code + position + ' ' + self.buy_lot + replacement
   __repr__ = __str__
 
-def save_lots(lots, filepath):
-  # Write the lots out to the given file
-  fd = open(filepath, 'w')
-  writer = csv.writer(fd)
+def save_lots(lots, openfile):
+  # Write the lots out to openfile which should be writeable file object
+  writer = csv.writer(openfile)
   writer.writerow(Lot.csv_headers())
   for lot in lots:
     writer.writerow(lot.csv_row())
 
-def load_lots(filepath):
-  reader = csv.reader(open(filepath))
+def load_lots(openfile):
+  # Load the lots out from openfile, which should be a readable file object
+  reader = csv.reader(openfile)
   ret = []
   buy_num = 1
   for row in reader:
@@ -134,9 +134,19 @@ def load_lots(filepath):
       buy_num = buy_num + 1
   return ret
 
+# Ways to sort lots
+def cmp_by_original_form_position(lot_a, lot_b):
+  if lot_a.original_form_position != lot_b.original_form_position:
+    if lot_a.original_form_position < lot_b.original_form_position:
+      return -1
+    return 1
+  return 0
+
 def merge_split_lots(lots):
-  """Merge split lots back together, assuming lots is sorted with respect to
+  """Merge split lots back together. Input will be sorted by
   original_form_position so only sequential records need to be merged."""
+
+  lots.sort(cmp=cmp_by_original_form_position)
 
   out = []
   # First lot in new sequence
@@ -149,8 +159,10 @@ def merge_split_lots(lots):
       # Merge previous and this one
       prev.count += lot.count
       prev.basis += lot.basis
-      prev.proceeds += lot.proceeds
-      prev.adjustment += lot.adjustment
+      if lot.proceeds:
+        prev.proceeds = (prev.proceeds or 0.0) + lot.proceeds
+      if lot.adjustment:
+        prev.adjustment = (prev.adjustment or 0.0) + lot.adjustment
       prev.buy_lot += '|' + lot.buy_lot
       assert(prev.code == "" or lot.code == "" or prev.code == lot.code)
       if lot.code:

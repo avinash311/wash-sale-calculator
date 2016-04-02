@@ -1,0 +1,5 @@
+Count,Symbol,Description,Date Acquired,Cost Basis,Date Sold,Proceeds,AdjCode,Adjustment Amount,FormPosition,BuyLot,IsReplacement
+250,X,123ABC,01/18/2008,28300.0,,,,,Buy A.1,"4,1|4",True
+100,X,123ABC,01/05/2008,15800.0,12/27/2013,12500.0,W,3300.0,Line 1,1,
+100,X,123ABC,01/06/2008,10000.0,12/27/2013,12500.0,,,Line 2,2,
+100,X,123ABC,01/07/2008,9500.0,12/27/2013,12500.0,,,Line 3,3,
